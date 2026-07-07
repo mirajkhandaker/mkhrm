@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Loader2, PlusCircle, Trash2 } from 'lucide-react';
+import { ArrowLeftCircle, Loader2, PlusCircle, Trash2 } from 'lucide-react';
 import { api, ApiError } from '@/lib/api';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -77,6 +77,11 @@ export default function NewPurchasePage() {
 
   return (
     <div className="space-y-6 p-6 max-w-4xl">
+      <div>
+        <Button variant="ghost" size="sm" onClick={() => router.push('/assets/purchases')}>
+          <ArrowLeftCircle className="h-4 w-4 mr-1.5" /> Back to purchases
+        </Button>
+      </div>
       <h1 className="font-display text-2xl font-semibold">New Purchase</h1>
 
       {error && <Card className="border-danger/30 bg-danger/5"><CardContent className="pt-4 text-sm text-danger">{error}</CardContent></Card>}

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import {
   ArrowLeftCircle,
   ArrowRightLeft,
@@ -9,6 +9,7 @@ import {
   ClipboardCheck,
   History as HistoryIcon,
   Loader2,
+  Pencil,
   Undo2,
   Wrench,
 } from 'lucide-react';
@@ -61,6 +62,7 @@ interface MaintenanceRecord {
 interface EmployeeOption { id: string; firstName: string; lastName: string }
 interface DeptOption { id: string; name: string }
 interface LocationOption { id: string; name: string }
+interface ConditionOption { id: string; name: string }
 
 const STATUS_STYLES: Record<string, string> = {
   in_stock:       'border-info text-info bg-info/5',
@@ -70,9 +72,12 @@ const STATUS_STYLES: Record<string, string> = {
   lost:           'border-danger text-danger bg-danger/5',
 };
 
+type ActionKind = 'assign' | 'return' | 'transfer' | 'retire' | 'maintenance' | 'edit';
+
 export default function AssetUnitDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { hasPermission } = useAuth();
 
   const [unit, setUnit] = useState<AssetUnit | null>(null);
@@ -81,10 +86,11 @@ export default function AssetUnitDetailPage() {
   const [employees, setEmployees] = useState<EmployeeOption[]>([]);
   const [departments, setDepartments] = useState<DeptOption[]>([]);
   const [locations, setLocations] = useState<LocationOption[]>([]);
+  const [conditions, setConditions] = useState<ConditionOption[]>([]);
   const [tab, setTab] = useState<'history' | 'maintenance'>('history');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [action, setAction] = useState<null | 'assign' | 'return' | 'transfer' | 'retire' | 'maintenance'>(null);
+  const [action, setAction] = useState<null | ActionKind>(null);
   const [busy, setBusy] = useState(false);
 
   // form state (per-action)
@@ -94,6 +100,10 @@ export default function AssetUnitDetailPage() {
   const [returnLocationId, setReturnLocationId] = useState('');
   const [maintenanceDescription, setMaintenanceDescription] = useState('');
   const [maintenanceVendor, setMaintenanceVendor] = useState('');
+  const [editName, setEditName]         = useState('');
+  const [editSerial, setEditSerial]     = useState('');
+  const [editConditionId, setEditCond]  = useState('');
+  const [editNotes, setEditNotes]       = useState('');
 
   function reload() {
     setLoading(true);
@@ -113,13 +123,31 @@ export default function AssetUnitDetailPage() {
       api.get<{ data: EmployeeOption[] }>('/employees?limit=1000').catch(() => ({ data: [] })),
       api.get<DeptOption[]>('/departments').catch(() => []),
       api.get<LocationOption[]>('/assets/locations').catch(() => []),
-    ]).then(([e, d, l]) => {
+      api.get<ConditionOption[]>('/assets/conditions').catch(() => []),
+    ]).then(([e, d, l, c]) => {
       setEmployees((e as { data: EmployeeOption[] }).data ?? []);
       setDepartments(d as DeptOption[]);
       setLocations(l as LocationOption[]);
+      setConditions(c as ConditionOption[]);
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
+
+  // Deep-link into a specific action panel from the inventory list.
+  useEffect(() => {
+    if (!unit) return;
+    const requested = searchParams.get('action') as ActionKind | null;
+    if (!requested) return;
+    if (requested === 'edit') {
+      setEditName(unit.name);
+      setEditSerial(unit.serialNo ?? '');
+      setEditCond(unit.condition?.id ?? '');
+      setEditNotes(unit.notes ?? '');
+    }
+    setAction(requested);
+  // Only respond to the initial value once the unit has loaded.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [unit?.id]);
 
   async function submitAssign() {
     if (!holderId) { setError('Choose a holder'); return; }
@@ -160,6 +188,22 @@ export default function AssetUnitDetailPage() {
     try {
       await api.post(`/assets/${id}/retire`, { reason: note });
       setAction(null); setNote('');
+      reload();
+    } catch (err: unknown) { setError((err as ApiError).message ?? 'Failed'); }
+    finally { setBusy(false); }
+  }
+
+  async function submitEdit() {
+    if (!editName.trim()) { setError('Name is required'); return; }
+    setBusy(true); setError(null);
+    try {
+      await api.patch(`/assets/${id}`, {
+        name: editName.trim(),
+        serialNo: editSerial.trim() || undefined,
+        conditionId: editConditionId || undefined,
+        notes: editNotes || undefined,
+      });
+      setAction(null);
       reload();
     } catch (err: unknown) { setError((err as ApiError).message ?? 'Failed'); }
     finally { setBusy(false); }
@@ -210,6 +254,18 @@ export default function AssetUnitDetailPage() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
+          {hasPermission('asset.unit.update') && (
+            <Button size="sm" variant="outline" onClick={() => {
+              setAction('edit');
+              setEditName(unit.name);
+              setEditSerial(unit.serialNo ?? '');
+              setEditCond(unit.condition?.id ?? '');
+              setEditNotes(unit.notes ?? '');
+              setError(null);
+            }}>
+              <Pencil className="h-4 w-4 mr-1.5" /> Edit
+            </Button>
+          )}
           {unit.status !== 'retired' && hasPermission('asset.unit.assign') && (
             <Button size="sm" variant="outline" onClick={() => { setAction('assign'); setHolderType('employee'); setError(null); }}>
               <ClipboardCheck className="h-4 w-4 mr-1.5" /> Assign
@@ -259,7 +315,37 @@ export default function AssetUnitDetailPage() {
               {action === 'return'      && 'Return to stock'}
               {action === 'retire'      && 'Retire this unit'}
               {action === 'maintenance' && 'Start maintenance'}
+              {action === 'edit'        && 'Edit unit details'}
             </h3>
+
+            {action === 'edit' && (
+              <div className="space-y-2">
+                <div>
+                  <label className="text-xs text-muted-foreground">Name</label>
+                  <input value={editName} onChange={(e) => setEditName(e.target.value)}
+                    className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm" />
+                </div>
+                <div>
+                  <label className="text-xs text-muted-foreground">Serial number</label>
+                  <input value={editSerial} onChange={(e) => setEditSerial(e.target.value)}
+                    placeholder="Optional"
+                    className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm font-mono" />
+                </div>
+                <div>
+                  <label className="text-xs text-muted-foreground">Condition</label>
+                  <select value={editConditionId} onChange={(e) => setEditCond(e.target.value)}
+                    className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm">
+                    <option value="">— unchanged —</option>
+                    {conditions.map((c) => (<option key={c.id} value={c.id}>{c.name}</option>))}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs text-muted-foreground">Notes</label>
+                  <textarea value={editNotes} onChange={(e) => setEditNotes(e.target.value)}
+                    className="w-full min-h-16 rounded-md border border-input bg-background px-3 py-2 text-sm" />
+                </div>
+              </div>
+            )}
 
             {(action === 'assign' || action === 'transfer') && (
               <div className="space-y-2">
@@ -322,7 +408,7 @@ export default function AssetUnitDetailPage() {
               </>
             )}
 
-            {action !== 'maintenance' && (
+            {action !== 'maintenance' && action !== 'edit' && (
               <textarea
                 placeholder="Note (optional)"
                 value={note}
@@ -342,6 +428,7 @@ export default function AssetUnitDetailPage() {
                   if (action === 'return')      submitReturn();
                   if (action === 'retire')      submitRetire();
                   if (action === 'maintenance') startMaintenance();
+                  if (action === 'edit')        submitEdit();
                 }}
               >{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Submit'}</Button>
             </div>

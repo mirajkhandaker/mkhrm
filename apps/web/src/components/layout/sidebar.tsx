@@ -23,6 +23,11 @@ import {
   Boxes,
   Package,
   Warehouse,
+  Tags,
+  MapPin,
+  Sparkles,
+  Map,
+  Upload,
   X,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -64,9 +69,14 @@ const navGroups = [
   {
     label: 'Assets',
     items: [
-      { label: 'Inventory',   href: '/assets',           icon: Warehouse, permission: 'asset.unit.read' },
-      { label: 'Purchases',   href: '/assets/purchases', icon: Package,   permission: 'asset.purchase.create' },
-      { label: 'My Assets',   href: '/assets/my',        icon: Boxes,     permission: null },
+      { label: 'Inventory',    href: '/assets',              icon: Warehouse, permission: 'asset.unit.read' },
+      { label: 'Distribution', href: '/assets/distribution', icon: Map,       permission: 'asset.unit.read' },
+      { label: 'Purchases',    href: '/assets/purchases',    icon: Package,   permission: 'asset.purchase.create' },
+      { label: 'Categories',   href: '/assets/categories',   icon: Tags,      permission: 'asset.category.manage' },
+      { label: 'Locations',    href: '/assets/locations',    icon: MapPin,    permission: 'asset.location.manage' },
+      { label: 'Conditions',   href: '/assets/conditions',   icon: Sparkles,  permission: 'asset.condition.manage' },
+      { label: 'Bulk Import',  href: '/assets/import',       icon: Upload,    permission: 'asset.unit.create' },
+      { label: 'My Assets',    href: '/assets/my',           icon: Boxes,     permission: null },
     ],
   },
   {
@@ -110,6 +120,17 @@ export function Sidebar({ mobileOpen, onCloseMobile }: SidebarProps) {
       items: group.items.filter((item) => item.permission === null || hasPermission(item.permission)),
     }))
     .filter((group) => group.items.length > 0);
+
+  // Most-specific-wins active detection so /assets/categories highlights Categories,
+  // not Inventory (whose href '/assets' would otherwise also match).
+  const allHrefs = visibleGroups.flatMap((g) => g.items.map((i) => i.href));
+  function isActive(href: string) {
+    if (pathname === href) return true;
+    if (!pathname.startsWith(href + '/')) return false;
+    return !allHrefs.some(
+      (h) => h !== href && h.length > href.length && (pathname === h || pathname.startsWith(h + '/')),
+    );
+  }
 
   return (
     <>
@@ -165,7 +186,7 @@ export function Sidebar({ mobileOpen, onCloseMobile }: SidebarProps) {
               </h2>
               <ul className="space-y-0.5 px-2">
                 {group.items.map(({ label, href, icon: Icon }) => {
-                  const active = pathname === href || pathname.startsWith(href + '/');
+                  const active = isActive(href);
                   const showBadge = href === '/approvals' && pendingApprovals > 0;
                   return (
                     <li key={href}>

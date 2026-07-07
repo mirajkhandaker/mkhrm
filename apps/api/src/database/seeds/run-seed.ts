@@ -450,6 +450,12 @@ async function runSeed() {
     await ensureDemoEmployee(
       'hradmin@hrm.local', 'EMP-HR-001', '1004', 'Sam', 'Rivera', null, hrAdminRole?.id,
     );
+    // Super admin needs an employee profile too — every feature action (requisition,
+    // leave, travel, clock-in) resolves the requester via employees.user_id and rejects
+    // logins with no matching profile as "Employee profile not found".
+    await ensureDemoEmployee(
+      'admin@hrm.local', 'EMP-SA-001', '1005', 'System', 'Admin', null, superRole?.id,
+    );
     console.log('Demo department, designation, manager chain (VP > Head > Manager) and report employee seeded.');
 
     // ── Attendance: holidays, shifts, schedules, roster, attendance records ─────

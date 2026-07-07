@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Boxes, Package, Loader2, Search, ShieldCheck } from 'lucide-react';
+import { Boxes, ClipboardCheck, Eye, Loader2, Map, Package, Pencil, Search } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
 import { api, ApiError } from '@/lib/api';
 import { Card, CardContent } from '@/components/ui/card';
@@ -108,11 +108,9 @@ export default function AssetsInventoryPage() {
           <p className="text-sm text-muted-foreground">Inventory, assignments, and consumable stock.</p>
         </div>
         <div className="flex gap-2">
-          {hasPermission('asset.category.manage') && (
-            <Button variant="outline" size="sm" asChild>
-              <Link href="/assets/admin"><ShieldCheck className="h-4 w-4 mr-1.5" />Admin</Link>
-            </Button>
-          )}
+          <Button variant="outline" size="sm" asChild>
+            <Link href="/assets/distribution"><Map className="h-4 w-4 mr-1.5" />Distribution</Link>
+          </Button>
           {hasPermission('asset.purchase.create') && (
             <Button variant="outline" size="sm" asChild>
               <Link href="/assets/purchases"><Package className="h-4 w-4 mr-1.5" />Purchases</Link>
@@ -211,6 +209,7 @@ export default function AssetsInventoryPage() {
                     <th className="px-4 py-2 text-left">Holder</th>
                     <th className="px-4 py-2 text-left">Status</th>
                     <th className="px-4 py-2 text-right">Cost</th>
+                    <th className="px-4 py-2 text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
@@ -231,6 +230,23 @@ export default function AssetsInventoryPage() {
                         <Badge variant="outline" className={cn('text-xs', STATUS_STYLES[u.status] ?? '')}>{u.status.replace('_', ' ')}</Badge>
                       </td>
                       <td className="px-4 py-2 text-right tabular-nums">${Number(u.purchaseCost).toFixed(2)}</td>
+                      <td className="px-4 py-2 text-right">
+                        <div className="flex justify-end gap-1">
+                          <Button asChild variant="ghost" size="sm" title="View">
+                            <Link href={`/assets/${u.id}`}><Eye className="h-3.5 w-3.5" /></Link>
+                          </Button>
+                          {u.status !== 'retired' && hasPermission('asset.unit.assign') && (
+                            <Button asChild variant="ghost" size="sm" title="Assign">
+                              <Link href={`/assets/${u.id}?action=assign`}><ClipboardCheck className="h-3.5 w-3.5" /></Link>
+                            </Button>
+                          )}
+                          {hasPermission('asset.unit.update') && (
+                            <Button asChild variant="ghost" size="sm" title="Edit">
+                              <Link href={`/assets/${u.id}?action=edit`}><Pencil className="h-3.5 w-3.5" /></Link>
+                            </Button>
+                          )}
+                        </div>
+                      </td>
                     </tr>
                   ))}
                 </tbody>

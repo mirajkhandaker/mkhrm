@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Loader2, Package, PlusCircle } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { ArrowLeftCircle, Loader2, Package, PlusCircle } from 'lucide-react';
 import { api, ApiError } from '@/lib/api';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -29,6 +30,7 @@ const STATUS_STYLES: Record<string, string> = {
 };
 
 export default function AssetPurchasesPage() {
+  const router = useRouter();
   const [purchases, setPurchases] = useState<Purchase[]>([]);
   const [status, setStatus] = useState('');
   const [loading, setLoading] = useState(true);
@@ -45,6 +47,12 @@ export default function AssetPurchasesPage() {
 
   return (
     <div className="space-y-6 p-6">
+      <div>
+        <Button variant="ghost" size="sm" onClick={() => router.push('/assets')}>
+          <ArrowLeftCircle className="h-4 w-4 mr-1.5" /> Back to inventory
+        </Button>
+      </div>
+
       <div className="flex items-center justify-between">
         <div>
           <h1 className="font-display text-2xl font-semibold text-foreground">Asset Purchases</h1>

@@ -150,6 +150,16 @@ export class AssetsController {
     return this.stockService.list({ categoryId, locationId });
   }
 
+  @Get('stock/issued')
+  @UseGuards(PermissionsGuard) @Permissions(Permission.AssetUnitRead)
+  listIssued(
+    @Query('categoryId') categoryId?: string,
+    @Query('locationId') locationId?: string,
+    @Query('toEmployeeId') toEmployeeId?: string,
+  ) {
+    return this.stockService.listIssued({ categoryId, locationId, toEmployeeId });
+  }
+
   @Post('stock/adjust')
   @UseGuards(PermissionsGuard) @Permissions(Permission.AssetStockAdjust)
   adjustStock(@CurrentUser() user: JwtPayload, @Body() dto: StockAdjustDto) {
