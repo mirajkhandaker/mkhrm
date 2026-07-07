@@ -73,6 +73,31 @@ export enum Permission {
 
   // Notifications
   NotificationsRead = 'notifications.read',
+
+  // Assets — categories/locations/conditions
+  AssetCategoryManage = 'asset.category.manage',
+  AssetLocationManage = 'asset.location.manage',
+  AssetConditionManage = 'asset.condition.manage',
+
+  // Assets — units (physical serialized items)
+  AssetUnitCreate = 'asset.unit.create',
+  AssetUnitRead = 'asset.unit.read',
+  AssetUnitUpdate = 'asset.unit.update',
+  AssetUnitDelete = 'asset.unit.delete',
+  AssetUnitAssign = 'asset.unit.assign',
+  AssetUnitTransfer = 'asset.unit.transfer',
+  AssetUnitRetire = 'asset.unit.retire',
+
+  // Assets — purchases
+  AssetPurchaseCreate = 'asset.purchase.create',
+  AssetPurchaseReceive = 'asset.purchase.receive',
+
+  // Assets — stock (consumables)
+  AssetStockAdjust = 'asset.stock.adjust',
+  AssetStockIssue = 'asset.stock.issue',
+
+  // Assets — maintenance
+  AssetMaintenanceLog = 'asset.maintenance.log',
 }
 
 // ── User ──────────────────────────────────────────────────────────────────────
@@ -265,6 +290,7 @@ export enum ApprovalEntityType {
   TravelSettlement = 'travel_settlement',
   ExpenseClaim = 'expense_claim',
   Regularization = 'regularization',
+  AssetAssignment = 'asset_assignment',
 }
 
 export enum ApproverType {
@@ -390,11 +416,68 @@ export enum TravelSettlementStatus {
 export enum AttachmentOwnerType {
   TravelRequestItem = 'travel_request_item',
   ExpenseItem = 'expense_item',
+  AssetUnit = 'asset_unit',
+  AssetPurchase = 'asset_purchase',
 }
 
 export enum ChangeEntityType {
   TravelRequest = 'travel_request',
   ExpenseClaim = 'expense_claim',
+  AssetUnit = 'asset_unit',
+}
+
+// ── Assets ────────────────────────────────────────────────────────────────────
+// Serialized items live one-row-per-physical-item in asset_units.
+// Consumables (pens, tissue) live as per-(category, location) quantity in asset_stock.
+export enum AssetTrackingMode {
+  Serialized = 'serialized',
+  Consumable = 'consumable',
+}
+
+export enum DepreciationMethod {
+  None = 'none',
+  StraightLine = 'straight_line',
+  ReducingBalance = 'reducing_balance',
+}
+
+// A unit can be held by an employee, a department (team), or a location (shared/pool).
+// Exactly one of the three FKs on asset_units is non-null (DB CHECK).
+export enum AssetHolderType {
+  Employee = 'employee',
+  Department = 'department',
+  Location = 'location',
+}
+
+export enum AssetUnitStatus {
+  InStock = 'in_stock',
+  Assigned = 'assigned',
+  InMaintenance = 'in_maintenance',
+  Retired = 'retired',
+  Lost = 'lost',
+}
+
+export enum AssetMovementType {
+  StockIn = 'stock_in',
+  Assign = 'assign',
+  Return = 'return',
+  Transfer = 'transfer',
+  IssueConsumable = 'issue_consumable',
+  MaintenanceIn = 'maintenance_in',
+  MaintenanceOut = 'maintenance_out',
+  Retire = 'retire',
+  WriteOff = 'write_off',
+}
+
+export enum AssetPurchaseStatus {
+  Draft = 'draft',
+  Received = 'received',
+  Cancelled = 'cancelled',
+}
+
+export enum AssetMaintenanceOutcome {
+  Serviced = 'serviced',
+  Replaced = 'replaced',
+  WrittenOff = 'written_off',
 }
 
 // ── Notifications ─────────────────────────────────────────────────────────────
@@ -406,5 +489,8 @@ export enum NotificationType {
   LeaveRejected = 'leave_rejected',
   ExpenseReimbursed = 'expense_reimbursed',
   TravelReimbursed = 'travel_reimbursed',
+  AssetAssigned = 'asset_assigned',
+  AssetLowStock = 'asset_low_stock',
+  AssetWarrantyExpiring = 'asset_warranty_expiring',
   System = 'system',
 }

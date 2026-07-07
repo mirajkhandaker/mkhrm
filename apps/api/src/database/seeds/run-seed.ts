@@ -14,6 +14,8 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
     P.EmployeeRead, P.AttendanceClockIn, P.AttendanceViewOwn, P.AttendanceRegularize,
     P.LeaveApply, P.RequisitionCreate, P.TravelCreate,
     P.ExpenseCreate, P.NotificationsRead,
+    // Employees can read the catalog but not manage it.
+    P.AssetUnitRead,
   ],
   [RoleName.LineManager]: [
     P.EmployeeRead, P.EmployeeReadAll,
@@ -22,6 +24,7 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
     P.RequisitionCreate, P.RequisitionApprove,
     P.TravelCreate, P.TravelApprove,
     P.ExpenseCreate, P.NotificationsRead,
+    P.AssetUnitRead,
   ],
   [RoleName.HRAdmin]: [
     P.EmployeeCreate, P.EmployeeRead, P.EmployeeUpdate, P.EmployeeDelete, P.EmployeeReadAll,
@@ -35,11 +38,19 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
     P.TravelCreate, P.TravelApprove, P.TravelSettle, P.TravelReimburse,
     P.ExpenseCreate, P.ExpenseApprove,
     P.ReportsView, P.NotificationsRead, P.WorkflowConfigure, P.RoleManage,
+    // HR Admins own the asset catalog, inventory, and maintenance.
+    P.AssetCategoryManage, P.AssetLocationManage, P.AssetConditionManage,
+    P.AssetUnitCreate, P.AssetUnitRead, P.AssetUnitUpdate, P.AssetUnitDelete,
+    P.AssetUnitAssign, P.AssetUnitTransfer, P.AssetUnitRetire,
+    P.AssetStockAdjust, P.AssetStockIssue, P.AssetMaintenanceLog,
+    P.AssetPurchaseCreate, P.AssetPurchaseReceive,
   ],
   [RoleName.Finance]: [
     P.EmployeeRead, P.SalaryView,
     P.ExpenseApprove, P.ExpenseReimburse,
     P.TravelApprove, P.TravelSettle, P.TravelReimburse, P.ReportsView, P.ExportsFinance, P.NotificationsRead,
+    // Finance reviews and approves asset purchases.
+    P.AssetPurchaseCreate, P.AssetPurchaseReceive, P.AssetUnitRead,
   ],
 };
 
@@ -60,6 +71,11 @@ async function runSeed() {
       { key: 'basic_to_gross_min_ratio', value: 0.5 },
       { key: 'allow_self_salary_view', value: false },
       { key: 'terminated_data_retention_days', value: 730 },
+      // Asset management defaults
+      { key: 'asset_tag_prefix', value: 'HRM-' },
+      { key: 'asset_tag_next_number', value: 1 },
+      { key: 'consumable_low_stock_threshold_default', value: 10 },
+      { key: 'asset_purchase_threshold_without_requisition', value: 1000 },
     ]) {
       await settingsRepo.createQueryBuilder().insert().into('settings')
         .values({ key: s.key, value: s.value }).orIgnore().execute();
@@ -179,6 +195,14 @@ async function runSeed() {
           { stepOrder: 1, approverType: ApproverType.LineManager, approverRef: null, isMandatory: true, slaHours: 24 },
         ],
       },
+      {
+        name: 'Asset Assignment Approval',
+        entityType: ApprovalEntityType.AssetAssignment,
+        steps: [
+          { stepOrder: 1, approverType: ApproverType.LineManager, approverRef: null, isMandatory: true, slaHours: 24 },
+          { stepOrder: 2, approverType: ApproverType.Role, approverRef: hrAdminRole?.id ?? null, isMandatory: true, slaHours: 48, minMetricValue: 500 },
+        ],
+      },
     ];
 
     for (const wf of defaultWorkflows) {
@@ -230,6 +254,82 @@ async function runSeed() {
       );
     }
     console.log('Default leave types seeded.');
+
+    // Default asset config (categories, locations, conditions) — raw SQL for
+    // straightforward snake_case column mapping (createQueryBuilder without
+    // entity metadata drops snake_case values silently).
+    for (const cond of [
+      { code: 'NEW',     name: 'New',     order: 1 },
+      { code: 'GOOD',    name: 'Good',    order: 2 },
+      { code: 'FAIR',    name: 'Fair',    order: 3 },
+      { code: 'DAMAGED', name: 'Damaged', order: 4 },
+    ]) {
+      const exists = await dataSource.query(`SELECT id FROM asset_conditions WHERE code = $1 LIMIT 1`, [cond.code]);
+      if (exists.length === 0) {
+        await dataSource.query(
+          `INSERT INTO asset_conditions (code, name, display_order, is_active) VALUES ($1, $2, $3, true)`,
+          [cond.code, cond.name, cond.order],
+        );
+      }
+    }
+
+    for (const cat of [
+      { code: 'LAPTOP',   name: 'Laptop',   mode: 'serialized', dep: 'straight_line', life: 36,   warr: 24,   tag: true,  order: 1 },
+      { code: 'CHAIR',    name: 'Chair',    mode: 'serialized', dep: 'straight_line', life: 60,   warr: 12,   tag: true,  order: 2 },
+      { code: 'DESK',     name: 'Desk',     mode: 'serialized', dep: 'straight_line', life: 60,   warr: 12,   tag: true,  order: 3 },
+      { code: 'PEN',      name: 'Pen',      mode: 'consumable', dep: 'none',          life: null, warr: null, tag: false, order: 10 },
+      { code: 'NOTEBOOK', name: 'Notebook', mode: 'consumable', dep: 'none',          life: null, warr: null, tag: false, order: 11 },
+    ]) {
+      const exists = await dataSource.query(`SELECT id FROM asset_categories WHERE code = $1 LIMIT 1`, [cat.code]);
+      if (exists.length === 0) {
+        await dataSource.query(
+          `INSERT INTO asset_categories
+             (code, name, tracking_mode, depreciation_method, useful_life_months, default_warranty_months,
+              requires_asset_tag, display_order, is_active)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true)`,
+          [cat.code, cat.name, cat.mode, cat.dep, cat.life, cat.warr, cat.tag, cat.order],
+        );
+      }
+    }
+
+    // Locations are hierarchical: HQ → Floor 1 → Room A / Room B
+    let hqId: string | null = null;
+    {
+      const hq = await dataSource.query(`SELECT id FROM asset_locations WHERE code = 'HQ' LIMIT 1`);
+      if (hq.length > 0) {
+        hqId = hq[0].id;
+      } else {
+        const ins = await dataSource.query(
+          `INSERT INTO asset_locations (code, name, parent_id, is_active) VALUES ('HQ', 'Headquarters', NULL, true) RETURNING id`,
+        );
+        hqId = ins[0]?.id ?? null;
+      }
+    }
+    let f1Id: string | null = null;
+    if (hqId) {
+      const f1 = await dataSource.query(`SELECT id FROM asset_locations WHERE code = 'HQ-F1' LIMIT 1`);
+      if (f1.length > 0) {
+        f1Id = f1[0].id;
+      } else {
+        const ins = await dataSource.query(
+          `INSERT INTO asset_locations (code, name, parent_id, is_active) VALUES ($1, $2, $3, true) RETURNING id`,
+          ['HQ-F1', 'Floor 1', hqId],
+        );
+        f1Id = ins[0]?.id ?? null;
+      }
+    }
+    if (f1Id) {
+      for (const [code, name] of [['HQ-F1-A', 'Room A'], ['HQ-F1-B', 'Room B']]) {
+        const exists = await dataSource.query(`SELECT id FROM asset_locations WHERE code = $1 LIMIT 1`, [code]);
+        if (exists.length === 0) {
+          await dataSource.query(
+            `INSERT INTO asset_locations (code, name, parent_id, is_active) VALUES ($1, $2, $3, true)`,
+            [code, name, f1Id],
+          );
+        }
+      }
+    }
+    console.log('Default asset categories, locations, and conditions seeded.');
 
     // ── Demo org: department, designation, manager + report ─────────────────────
     // No employee data exists yet in this seed script (Phase 2 shipped the module

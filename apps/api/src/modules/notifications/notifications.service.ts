@@ -30,6 +30,7 @@ const ENTITY_LABEL: Record<ApprovalEntityType, string> = {
   [ApprovalEntityType.TravelSettlement]: 'travel settlement',
   [ApprovalEntityType.ExpenseClaim]: 'expense claim',
   [ApprovalEntityType.Regularization]: 'attendance regularization',
+  [ApprovalEntityType.AssetAssignment]: 'asset assignment',
 };
 
 const ENTITY_LINK: Record<ApprovalEntityType, (id: string) => string> = {
@@ -39,6 +40,7 @@ const ENTITY_LINK: Record<ApprovalEntityType, (id: string) => string> = {
   [ApprovalEntityType.TravelSettlement]: (id) => `/travel/${id}`,
   [ApprovalEntityType.ExpenseClaim]: (id) => `/expenses/${id}`,
   [ApprovalEntityType.Regularization]: () => '/attendance',
+  [ApprovalEntityType.AssetAssignment]: (id) => `/assets/${id}`,
 };
 
 @Injectable()

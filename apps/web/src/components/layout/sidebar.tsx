@@ -20,6 +20,9 @@ import {
   CheckSquare,
   ShieldCheck,
   GitBranch,
+  Boxes,
+  Package,
+  Warehouse,
   X,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -56,6 +59,14 @@ const navGroups = [
       { label: 'Requisitions',     href: '/requisitions',  icon: ShoppingCart, permission: 'requisition.create' },
       { label: 'Travel',           href: '/travel',        icon: Plane,        permission: 'travel.create' },
       { label: 'Expenses',         href: '/expenses',      icon: Receipt,      permission: 'expense.create' },
+    ],
+  },
+  {
+    label: 'Assets',
+    items: [
+      { label: 'Inventory',   href: '/assets',           icon: Warehouse, permission: 'asset.unit.read' },
+      { label: 'Purchases',   href: '/assets/purchases', icon: Package,   permission: 'asset.purchase.create' },
+      { label: 'My Assets',   href: '/assets/my',        icon: Boxes,     permission: null },
     ],
   },
   {

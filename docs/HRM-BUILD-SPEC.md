@@ -509,6 +509,33 @@ Tests:
 
 **Acceptance:** mutations are audited; settings drive behavior (timezone affects attendance, ratio affects salary validation); a11y and responsive checks pass; seed produces a fully populated demo; CI is green.
 
+### Phase 11 — Asset Management
+*Dependencies: Phase 2 (Employees), Phase 4 (Approvals), Phase 9 (Notifications), Phase 10 (Hardening/Settings). Backend + frontend proceed in parallel once shared enums land in packages/types. Not in the original v1 scope — added later once the org needed real asset tracking beyond the "asset requisition" placeholder.*
+
+Backend:
+- [x] Extend shared enums in packages/types: AssetTrackingMode, AssetHolderType, AssetUnitStatus, AssetMovementType, AssetPurchaseStatus, AssetMaintenanceOutcome, DepreciationMethod; ApprovalEntityType += AssetAssignment; AttachmentOwnerType += AssetUnit, AssetPurchase; ChangeEntityType += AssetUnit; Permission += asset.*.
+- [x] Entities under apps/api/src/database/entities/assets/: asset_categories, asset_locations (self-FK), asset_conditions, asset_units (with 3-nullable-FK holder + CHECK), asset_stock (unique on category+location), asset_movements (append-only), asset_purchases, asset_purchase_items, asset_maintenance_records; migration AddAssetsModule.
+- [x] AssetsModule with CategoriesService, LocationsService, ConditionsService, UnitsService, StockService, PurchasesService, MaintenanceService, AssetsEventsListener, AssetsNotificationsListener, AssetsImportService; wired into AppModule.
+- [x] PurchasesService.receive: transactional creation of N asset_units (auto-tag from settings) OR asset_stock bump per line, plus asset_movements rows.
+- [x] UnitsService.requestAssign saves marker first, starts an AssetAssignment approval with metricValue = purchase_cost, then commits inline if auto-approved (fixes the sync-emit-before-marker race). @OnEvent('approval.approved') commits holder change when a real approver is in the loop.
+- [x] Extended AttachmentsService.resolveOwnerEmployeeId with AssetUnit + AssetPurchase arms.
+- [x] Notifications: AssetAssignment approval (via generic engine listener), low-stock crossings, warranty-expiring-30d (nightly).
+- [x] Seed extension: sample categories (Laptop/Chair/Desk/Pen/Notebook), locations (HQ→Floor 1→Room A/B), conditions (New/Good/Fair/Damaged), one AssetAssignment workflow, settings keys (asset_tag_prefix=HRM-, asset_tag_next_number=1, low-stock default=10, purchase-without-requisition threshold=1000). Role permissions granted to Employee/LineManager/HRAdmin/Finance.
+- [x] CSV/XLSX bulk import for existing units (idempotent by asset_tag).
+
+Frontend:
+- [x] apps/web/src/app/(shell)/assets/page.tsx — Units + Consumables tabs, filter bar (category/location/status/search).
+- [x] .../[id]/page.tsx — detail + assign/return/transfer/retire/maintenance modals + History/Maintenance tabs.
+- [x] .../purchases/{page.tsx, new/page.tsx, [id]/page.tsx} — list, create with line items, receive UX.
+- [x] .../admin/page.tsx — tabbed CRUD for Categories/Locations/Conditions + CSV import.
+- [x] .../my/page.tsx — employee-facing "my assets".
+- [x] Sidebar Assets group (Inventory / Purchases / My Assets), permission-gated.
+
+Tests:
+- [~] Formal Jest suites deferred — end-to-end behavior verified live via preview: purchase→receive creates 2 serialized units with auto-tags HRM-000001/HRM-000002 + bumps pen stock, assign starts an approval and commits when it finalizes, `/assets/my` lists exactly what the user holds, issue-consumable + retire + low-stock notification all fire. Playwright coverage of the full flow is the next follow-up.
+
+**Acceptance:** admins configure categories/locations/conditions via the tabbed admin page; a purchase receive-action creates the right units (serialized) or bumps stock (consumable) in one transaction with movement rows; assignments to employee/department/location go through the AssetAssignment workflow when configured and land in the unit's movement history; /assets/my lists a logged-in user's current holdings; low-stock notification fires below threshold; CSV import ingests pre-owned units idempotently. All verified.
+
 ---
 
 ## 12. Testing requirements

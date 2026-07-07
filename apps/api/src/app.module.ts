@@ -23,6 +23,7 @@ import { SettingsModule } from './modules/settings/settings.module';
 import { RolesModule } from './modules/roles/roles.module';
 import { AttachmentsModule } from './modules/attachments/attachments.module';
 import { ChangeLogModule } from './modules/change-log/change-log.module';
+import { AssetsModule } from './modules/assets/assets.module';
 import { join } from 'path';
 
 @Module({
@@ -68,6 +69,7 @@ import { join } from 'path';
     RolesModule,
     AttachmentsModule,
     ChangeLogModule,
+    AssetsModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })

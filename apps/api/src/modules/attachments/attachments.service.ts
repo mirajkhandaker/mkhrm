@@ -9,6 +9,8 @@ import { Attachment } from '../../database/entities/system/attachment.entity';
 import { TravelRequestItem } from '../../database/entities/travel/travel-request-item.entity';
 import { ExpenseItem } from '../../database/entities/travel/expense-item.entity';
 import { Employee } from '../../database/entities/employees/employee.entity';
+import { AssetUnit } from '../../database/entities/assets/asset-unit.entity';
+import { AssetPurchase } from '../../database/entities/assets/asset-purchase.entity';
 import { AttachmentRefDto } from './dto/attachment-ref.dto';
 
 const UPLOAD_DIR = join(process.cwd(), 'uploads', 'attachments');
@@ -22,6 +24,8 @@ export class AttachmentsService {
     @InjectRepository(TravelRequestItem) private travelItemRepo: Repository<TravelRequestItem>,
     @InjectRepository(ExpenseItem) private expenseItemRepo: Repository<ExpenseItem>,
     @InjectRepository(Employee) private employeeRepo: Repository<Employee>,
+    @InjectRepository(AssetUnit) private assetUnitRepo: Repository<AssetUnit>,
+    @InjectRepository(AssetPurchase) private assetPurchaseRepo: Repository<AssetPurchase>,
   ) {}
 
   // ── Staging (upload before the owning item exists) ──────────────────────────
@@ -112,10 +116,21 @@ export class AttachmentsService {
       });
       return item?.travelRequest?.employeeId ?? null;
     }
-    const item = await this.expenseItemRepo.findOne({
-      where: { id: attachment.ownerId },
-      relations: ['expenseClaim'],
-    });
-    return item?.expenseClaim?.employeeId ?? null;
+    if (attachment.ownerType === AttachmentOwnerType.ExpenseItem) {
+      const item = await this.expenseItemRepo.findOne({
+        where: { id: attachment.ownerId },
+        relations: ['expenseClaim'],
+      });
+      return item?.expenseClaim?.employeeId ?? null;
+    }
+    if (attachment.ownerType === AttachmentOwnerType.AssetUnit) {
+      const unit = await this.assetUnitRepo.findOne({ where: { id: attachment.ownerId } });
+      return unit?.currentEmployeeId ?? null;
+    }
+    if (attachment.ownerType === AttachmentOwnerType.AssetPurchase) {
+      const purchase = await this.assetPurchaseRepo.findOne({ where: { id: attachment.ownerId } });
+      return purchase?.receivedBy ?? null;
+    }
+    return null;
   }
 }
