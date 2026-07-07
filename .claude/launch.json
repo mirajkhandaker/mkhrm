@@ -11,7 +11,8 @@
       "name": "web",
       "runtimeExecutable": "pnpm",
       "runtimeArgs": ["run", "dev:web"],
-      "port": 6002
+      "port": 6002,
+      "autoPort": true
     }
   ]
 }

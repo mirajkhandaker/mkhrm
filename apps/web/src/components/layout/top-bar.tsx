@@ -13,6 +13,11 @@ export function TopBar({ onMenuClick }: { onMenuClick: () => void }) {
   const { user, logout } = useAuth();
   const router = useRouter();
   const [unreadCount, setUnreadCount] = useState(0);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     if (!user) return;
@@ -53,8 +58,13 @@ export function TopBar({ onMenuClick }: { onMenuClick: () => void }) {
           onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
           className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
           aria-label="Toggle theme"
+          suppressHydrationWarning
         >
-          {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+          {mounted ? (
+            theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />
+          ) : (
+            <div className="h-4 w-4" aria-hidden />
+          )}
         </button>
 
         <button
