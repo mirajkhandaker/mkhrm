@@ -518,23 +518,25 @@ Backend:
 - [x] AssetsModule with CategoriesService, LocationsService, ConditionsService, UnitsService, StockService, PurchasesService, MaintenanceService, AssetsEventsListener, AssetsNotificationsListener, AssetsImportService; wired into AppModule.
 - [x] PurchasesService.receive: transactional creation of N asset_units (auto-tag from settings) OR asset_stock bump per line, plus asset_movements rows.
 - [x] UnitsService.requestAssign saves marker first, starts an AssetAssignment approval with metricValue = purchase_cost, then commits inline if auto-approved (fixes the sync-emit-before-marker race). @OnEvent('approval.approved') commits holder change when a real approver is in the loop.
+- [x] StockService.listIssued + `GET /assets/stock/issued` — consumable-issuance ledger (who received what, how many, from where, by whom), dispatching the polymorphic `to_holder_id` against employees / departments / asset_locations via a raw join.
 - [x] Extended AttachmentsService.resolveOwnerEmployeeId with AssetUnit + AssetPurchase arms.
 - [x] Notifications: AssetAssignment approval (via generic engine listener), low-stock crossings, warranty-expiring-30d (nightly).
-- [x] Seed extension: sample categories (Laptop/Chair/Desk/Pen/Notebook), locations (HQ→Floor 1→Room A/B), conditions (New/Good/Fair/Damaged), one AssetAssignment workflow, settings keys (asset_tag_prefix=HRM-, asset_tag_next_number=1, low-stock default=10, purchase-without-requisition threshold=1000). Role permissions granted to Employee/LineManager/HRAdmin/Finance.
+- [x] Seed extension: sample categories (Laptop/Chair/Desk/Pen/Notebook), locations (HQ→Floor 1→Room A/B), conditions (New/Good/Fair/Damaged), one AssetAssignment workflow, settings keys (asset_tag_prefix=HRM-, asset_tag_next_number=1, low-stock default=10, purchase-without-requisition threshold=1000). Role permissions granted to Employee/LineManager/HRAdmin/Finance. Also gives admin@hrm.local (super admin) an employee profile (EMP-SA-001) so requester-scoped actions don't fail with "Employee profile not found".
 - [x] CSV/XLSX bulk import for existing units (idempotent by asset_tag).
 
 Frontend:
-- [x] apps/web/src/app/(shell)/assets/page.tsx — Units + Consumables tabs, filter bar (category/location/status/search).
-- [x] .../[id]/page.tsx — detail + assign/return/transfer/retire/maintenance modals + History/Maintenance tabs.
+- [x] apps/web/src/app/(shell)/assets/page.tsx — Units + Consumables tabs, filter bar (category/location/status/search), per-row View / Assign / Edit actions (Assign & Edit deep-link into the detail page via `?action=…`, which auto-opens the matching panel).
+- [x] .../[id]/page.tsx — detail + assign/return/transfer/retire/maintenance/**edit** panels (edit patches name/serial/condition/notes) + History/Maintenance tabs; reads `?action=` to open a panel on load.
 - [x] .../purchases/{page.tsx, new/page.tsx, [id]/page.tsx} — list, create with line items, receive UX.
-- [x] .../admin/page.tsx — tabbed CRUD for Categories/Locations/Conditions + CSV import.
+- [x] Dedicated config routes (replacing the earlier single tabbed admin page): `.../categories/page.tsx`, `.../locations/page.tsx`, `.../conditions/page.tsx` — each a full CRUD list with inline create + row-level Edit / Delete / Active-toggle; `.../import/page.tsx` — CSV/XLSX bulk import. `.../admin/page.tsx` now redirects to `/assets` (bookmark safety).
+- [x] .../distribution/page.tsx — where-is-what visibility: **By location** (serialized units grouped by location + a "Held" section for units checked out to employees/departments), **Consumable stock** (qty + min per category/location with a low-stock badge), **Issued to** (the consumable-issuance ledger).
 - [x] .../my/page.tsx — employee-facing "my assets".
-- [x] Sidebar Assets group (Inventory / Purchases / My Assets), permission-gated.
+- [x] Sidebar Assets group — Inventory / Distribution / Purchases / Categories / Locations / Conditions / Bulk Import / My Assets, each permission-gated. Sidebar active-detection is most-specific-href-wins so `/assets/categories` highlights Categories, not Inventory. Every asset subpage has a Back button.
 
 Tests:
 - [~] Formal Jest suites deferred — end-to-end behavior verified live via preview: purchase→receive creates 2 serialized units with auto-tags HRM-000001/HRM-000002 + bumps pen stock, assign starts an approval and commits when it finalizes, `/assets/my` lists exactly what the user holds, issue-consumable + retire + low-stock notification all fire. Playwright coverage of the full flow is the next follow-up.
 
-**Acceptance:** admins configure categories/locations/conditions via the tabbed admin page; a purchase receive-action creates the right units (serialized) or bumps stock (consumable) in one transaction with movement rows; assignments to employee/department/location go through the AssetAssignment workflow when configured and land in the unit's movement history; /assets/my lists a logged-in user's current holdings; low-stock notification fires below threshold; CSV import ingests pre-owned units idempotently. All verified.
+**Acceptance:** admins configure categories/locations/conditions via their dedicated sidebar routes (each with full row-level edit/delete/toggle); a purchase receive-action creates the right units (serialized) or bumps stock (consumable) in one transaction with movement rows; assignments to employee/department/location go through the AssetAssignment workflow when configured and land in the unit's movement history; the Distribution page shows where every unit is, current consumable stock levels, and the issued-to ledger; /assets/my lists a logged-in user's current holdings; low-stock notification fires below threshold; CSV import ingests pre-owned units idempotently. All verified.
 
 ---
 

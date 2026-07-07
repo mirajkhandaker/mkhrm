@@ -152,6 +152,57 @@ Editing a pre-trip travel request, submitting a settlement, or editing an expens
 
 ---
 
+## Asset Management architecture (Phase 11)
+
+Tracks physical assets beyond the "asset requisition" placeholder. Lives in `apps/api/src/modules/assets/` (entities under `apps/api/src/database/entities/assets/`). Reuses the shared approval / attachments / change-log / notifications infrastructure — the module never re-implements approval logic.
+
+### Serialized vs. consumable (two tables, not one)
+
+- **Serialized** categories (`AssetTrackingMode.Serialized` — laptops, chairs) → one `asset_units` row per physical item, each with a unique `asset_tag`, `serial_no`, `condition`, and `status`.
+- **Consumable** categories (`AssetTrackingMode.Consumable` — pens, notebooks) → one `asset_stock` row per `(category, location)` holding a `quantity`. Never a per-item row. UNIQUE on `(category_id, location_id)`.
+- A single `is_serialized` table was rejected — it would force ~10 nullable columns per row and block clean unique indexes.
+
+### Polymorphic holder (nullable-FK trio + CHECK)
+
+- A unit's current holder is an **employee**, **department** (the app's stand-in for "team"), or **location** — `current_holder_type` discriminator + `current_employee_id` / `current_department_id` / `current_location_id`, with a DB `@Check` enforcing exactly one non-null. Same shape on `asset_movements` from/to columns.
+- Service/DTO layer speaks a single `Holder = { type, id }` value object — controllers never touch the three-column shape.
+
+### Movements ledger (append-only)
+
+- `asset_movements` records every physical change (`stock_in` / `assign` / `return` / `transfer` / `issue_consumable` / `maintenance_*` / `retire` / `write_off`). Never `UPDATE`/`DELETE` — same rule as `leave_ledger` and `audit_logs`. `unit_id` set for serialized events, `category_id` for consumable events.
+
+### Purchase → receive (coexists with Requisitions)
+
+- Asset-typed requisitions stay "I need this" pre-approval. `asset_purchases.linked_requisition_id` is nullable (walk-in purchases exist). **No second approval on `asset_purchases`** — `receive` is a permission-gated clerical act. A walk-in purchase whose total exceeds `asset_purchase_threshold_without_requisition` (settings, default 1000) is blocked at the service layer.
+- `PurchasesService.receive` is transactional: for each line, either create N `asset_units` (serialized; tags auto-generated from settings `asset_tag_prefix` + `asset_tag_next_number`) or bump the `asset_stock` row, appending an `asset_movements.stock_in` per line and advancing the tag counter.
+
+### Assignment approval (only AssetAssignment)
+
+- Assigning a unit goes through `ApprovalEntityType.AssetAssignment` with `metricValue = purchase_cost`. `UnitsService.requestAssign` **saves the movement marker first**, then starts the approval, then commits inline if it auto-approved — this avoids the race where a synchronous `approval.approved` emit (no matching steps) fires before the marker row exists. When a real approver is in the loop, `@OnEvent('approval.approved')` commits the holder change.
+- Retire / return / transfer are direct permission-gated actions (no approval), each appending a movement row.
+
+### Distribution & issuance visibility
+
+- `GET /assets/stock/issued` (`StockService.listIssued`) is the consumable-issuance ledger — who received what, how many, from where, by whom. It dispatches the polymorphic `to_holder_id` against employees / departments / asset_locations via a raw join (no FK to join on).
+
+### Frontend routes (`apps/web/src/app/(shell)/assets/`)
+
+- `page.tsx` — inventory browser, Units + Consumables tabs, filters, per-row View / Assign / Edit. Assign & Edit deep-link to the detail page via `?action=…`.
+- `[id]/page.tsx` — unit detail; assign/return/transfer/retire/maintenance/edit panels; History + Maintenance tabs; reads `?action=` to open a panel on load.
+- `distribution/page.tsx` — By location (units grouped, plus a Held section), Consumable stock (with low-stock badge), Issued to (the ledger).
+- `purchases/{page,new,[id]}.tsx` — list, create with line items, receive.
+- `categories/`, `locations/`, `conditions/` — **dedicated** config CRUD routes (inline create + row-level Edit / Delete / Active-toggle). `import/page.tsx` — CSV/XLSX bulk import (idempotent by `asset_tag`). `admin/page.tsx` redirects to `/assets` (legacy bookmark).
+- `my/page.tsx` — employee-facing current holdings.
+- Sidebar Assets group lists all of the above, permission-gated. Active-detection is most-specific-href-wins so sub-routes don't also light up Inventory. Every subpage has a Back button.
+
+### Config & seed
+
+- New enums in `packages/types`: `AssetTrackingMode`, `AssetHolderType`, `AssetUnitStatus`, `AssetMovementType`, `AssetPurchaseStatus`, `AssetMaintenanceOutcome`, `DepreciationMethod`. Extends `ApprovalEntityType` (+`AssetAssignment`), `AttachmentOwnerType` (+`AssetUnit`, `AssetPurchase`), `ChangeEntityType` (+`AssetUnit`), `Permission` (+`asset.*`). Never duplicate an enum.
+- Settings keys: `asset_tag_prefix` (`HRM-`), `asset_tag_next_number` (`1`), `consumable_low_stock_threshold_default` (`10`), `asset_purchase_threshold_without_requisition` (`1000`).
+- The seed gives the super admin `admin@hrm.local` an employee profile (`EMP-SA-001`) — requester-scoped actions (requisition, leave, travel, asset assign) resolve the actor via `employees.user_id` and fail with "Employee profile not found" for a login with no matching profile.
+
+---
+
 ## §10 — Design Tokens
 
 Implement as CSS variables in `apps/web/src/app/globals.css` mapped to shadcn theme tokens. shadcn uses OKLCH — convert hex values when wiring.
