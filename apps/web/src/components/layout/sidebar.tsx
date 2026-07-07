@@ -17,6 +17,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Building2,
+  IdCard,
   CheckSquare,
   ShieldCheck,
   GitBranch,
@@ -46,8 +47,9 @@ const navGroups = [
   {
     label: 'People',
     items: [
-      { label: 'Employees',   href: '/employees',   icon: Users,     permission: 'employee.read' },
-      { label: 'Departments', href: '/departments', icon: Building2, permission: 'department.manage' },
+      { label: 'Employees',    href: '/employees',    icon: Users,     permission: 'employee.read' },
+      { label: 'Departments',  href: '/departments',  icon: Building2, permission: 'department.manage' },
+      { label: 'Designations', href: '/designations', icon: IdCard,    permission: 'designation.manage' },
     ],
   },
   {

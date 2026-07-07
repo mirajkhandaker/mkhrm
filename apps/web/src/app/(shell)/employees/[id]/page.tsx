@@ -126,7 +126,7 @@ interface PreviousEmploymentRow {
 }
 
 interface DeptOption { id: string; name: string; }
-interface DesigOption { id: string; title: string; }
+interface DesigOption { id: string; title: string; departmentId: string | null; }
 interface EmployeeOption { id: string; firstName: string; lastName: string; employeeCode: string; }
 
 type Tab = 'personal' | 'job' | 'probation' | 'compensation' | 'documents' | 'education' | 'workHistory';
@@ -913,7 +913,9 @@ export default function EmployeeProfilePage() {
                       <label className="block text-xs font-medium text-muted-foreground">New designation</label>
                       <select value={jobChangeForm.toDesignationId} onChange={(e) => setJobChangeForm((f) => ({ ...f, toDesignationId: e.target.value }))} className={fieldClass}>
                         <option value="">— unchanged —</option>
-                        {desigs.map((d) => <option key={d.id} value={d.id}>{d.title}</option>)}
+                        {desigs
+                          .filter((d) => !jobChangeForm.toDepartmentId || !d.departmentId || d.departmentId === jobChangeForm.toDepartmentId)
+                          .map((d) => <option key={d.id} value={d.id}>{d.title}</option>)}
                       </select>
                     </div>
                     <div className="space-y-1.5 col-span-2">

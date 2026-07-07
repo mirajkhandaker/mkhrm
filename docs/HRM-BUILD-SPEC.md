@@ -129,7 +129,7 @@ Create the following entities. `*` marks an indexed foreign key.
 - **role_permissions** — join (role_id*, permission_id*)
 - **user_roles** — join (user_id*, role_id*)
 - **departments** — `id, name, code, parent_id (self-FK), head_employee_id*`
-- **designations** — `id, title, level`
+- **designations** — `id, title, level, department_id* (nullable — designations are scoped under a department; null = org-wide)`
 - **employees** — `id, user_id*, employee_code (unique), device_user_id (nullable, for attendance-device matching), first_name, last_name, dob, gender, personal_email, phone, photo_url, address, emergency_contact, join_date, employment_type (permanent/contract/intern/probation), employment_status (probation/confirmed/notice_period/terminated/resigned), status (active/on_leave/inactive), department_id*, designation_id*, line_manager_id* (self-FK)`
   - `employees` holds the **current** department/designation/manager/employment_status as a denormalized copy of the latest history row, updated in the same transaction as the history write.
 - **job_changes** — `id, employee_id*, type (promotion/transfer/demotion/reassignment), effective_date, from_department_id, to_department_id, from_designation_id, to_designation_id, from_manager_id, to_manager_id, reason, note, created_by*`
@@ -363,7 +363,7 @@ Backend:
 Frontend:
 - [x] Employee directory (table + filters, pagination).
 - [x] Employee profile tabs: personal / job & history / probation.
-- [x] Department & designation management screens.
+- [x] Department (`/departments`) & designation (`/designations`) management screens, each in the sidebar's People group. Designations are scoped under a department (nullable FK): the designations screen groups titles by department with a department filter, and the employee create/job-change forms filter the designation dropdown to the chosen department (plus org-wide/unassigned titles).
 - [x] "Confirmations due" HR widget on dashboard.
 
 Tests:

@@ -6,7 +6,7 @@ import { api } from '@/lib/api';
 import { PageHeader } from '@/components/layout/page-header';
 
 interface Dept { id: string; name: string; code: string; }
-interface Desig { id: string; title: string; }
+interface Desig { id: string; title: string; departmentId: string | null; }
 
 export default function NewEmployeePage() {
   const router = useRouter();
@@ -25,7 +25,21 @@ export default function NewEmployeePage() {
     api.get<Desig[]>('/designations').then(setDesigs).catch(() => {});
   }, []);
 
-  const set = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }));
+  // Clear a chosen designation if it no longer belongs to the selected department.
+  const set = (k: string, v: string) =>
+    setForm((f) => {
+      const next = { ...f, [k]: v };
+      if (k === 'departmentId' && next.designationId) {
+        const d = desigs.find((x) => x.id === next.designationId);
+        if (d && d.departmentId && d.departmentId !== v) next.designationId = '';
+      }
+      return next;
+    });
+
+  // Show designations for the chosen department plus org-wide (unassigned) ones.
+  const availableDesigs = form.departmentId
+    ? desigs.filter((d) => !d.departmentId || d.departmentId === form.departmentId)
+    : desigs;
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -102,7 +116,7 @@ export default function NewEmployeePage() {
             <label className="block text-sm font-medium text-muted-foreground">Designation</label>
             <select value={form.designationId} onChange={(e) => set('designationId', e.target.value)} className={field}>
               <option value="">— none —</option>
-              {desigs.map((d) => <option key={d.id} value={d.id}>{d.title}</option>)}
+              {availableDesigs.map((d) => <option key={d.id} value={d.id}>{d.title}</option>)}
             </select>
           </div>
         </div>

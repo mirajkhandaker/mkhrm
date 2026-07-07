@@ -278,8 +278,8 @@ export class EmployeesController {
 
   @Get('designations')
   @Permissions(Permission.DesignationManage)
-  listDesig() {
-    return this.designations.findAll();
+  listDesig(@Query('departmentId') departmentId?: string) {
+    return this.designations.findAll(departmentId);
   }
 
   @Post('designations')

@@ -354,10 +354,16 @@ async function runSeed() {
       const existing = await dataSource.query(`SELECT id FROM designations WHERE title = 'Staff' LIMIT 1`);
       if (existing.length > 0) {
         designationId = existing[0].id;
+        // Self-heal: designations are now scoped under a department — attach the
+        // demo title to the General department if an older seed left it unassigned.
+        await dataSource.query(
+          `UPDATE designations SET department_id = $1 WHERE id = $2 AND department_id IS NULL`,
+          [deptId, designationId],
+        );
       } else {
         const inserted = await dataSource.query(
-          `INSERT INTO designations (title, level) VALUES ($1, $2) RETURNING id`,
-          ['Staff', 1],
+          `INSERT INTO designations (title, level, department_id) VALUES ($1, $2, $3) RETURNING id`,
+          ['Staff', 1, deptId],
         );
         designationId = inserted[0]?.id ?? null;
       }

@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsInt, Min, MinLength } from 'class-validator';
+import { IsString, IsOptional, IsInt, IsUUID, Min, MinLength } from 'class-validator';
 
 export class CreateDesignationDto {
   @IsString()
@@ -9,4 +9,8 @@ export class CreateDesignationDto {
   @Min(1)
   @IsOptional()
   level?: number;
+
+  @IsUUID()
+  @IsOptional()
+  departmentId?: string;
 }
