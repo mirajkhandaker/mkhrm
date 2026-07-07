@@ -1,0 +1,47 @@
+{
+  "name": "hrm",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": {
+    "dev": "turbo run dev",
+    "dev:api": "pnpm --filter api run dev",
+    "dev:web": "pnpm --filter web run dev",
+    "build": "turbo run build",
+    "test": "turbo run test",
+    "test:api": "pnpm --filter api run test",
+    "test:api:e2e": "pnpm --filter api run test:e2e",
+    "test:web": "pnpm --filter web run test",
+    "test:e2e": "playwright test",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "migration:generate": "pnpm --filter api run migration:generate --",
+    "migration:run": "pnpm --filter api run migration:run",
+    "migration:revert": "pnpm --filter api run migration:revert",
+    "seed": "pnpm --filter api run seed",
+    "pm2:start": "pm2 start ecosystem.config.js",
+    "pm2:stop": "pm2 stop ecosystem.config.js",
+    "pm2:restart": "pm2 restart ecosystem.config.js",
+    "pm2:logs": "pm2 logs",
+    "pm2:delete": "pm2 delete ecosystem.config.js"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.61.1",
+    "@types/node": "^20.19.43",
+    "dotenv": "^16.6.1",
+    "turbo": "^2.3.3",
+    "typescript": "^6.0.3"
+  },
+  "engines": {
+    "node": ">=20",
+    "pnpm": ">=10"
+  },
+  "packageManager": "pnpm@10.33.4",
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "@nestjs/core",
+      "argon2",
+      "esbuild",
+      "unrs-resolver"
+    ]
+  }
+}

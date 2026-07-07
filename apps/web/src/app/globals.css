@@ -1,0 +1,129 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── Light theme ─────────────────────────────────────────────────────────────── */
+@layer base {
+  :root {
+    /* Canvas & surfaces */
+    --background:            oklch(0.972 0.005 220);
+    --foreground:            oklch(0.190 0.025 222);
+    --card:                  oklch(1 0 0);
+    --card-foreground:       oklch(0.190 0.025 222);
+    --popover:               oklch(1 0 0);
+    --popover-foreground:    oklch(0.190 0.025 222);
+
+    /* Primary — calm teal */
+    --primary:               oklch(0.517 0.090 186);
+    --primary-foreground:    oklch(1 0 0);
+    --primary-hover:         oklch(0.441 0.080 186);
+    --primary-soft:          oklch(0.942 0.018 186);
+
+    /* Secondary / muted */
+    --secondary:             oklch(0.942 0.018 186);
+    --secondary-foreground:  oklch(0.190 0.025 222);
+    --muted:                 oklch(0.929 0.008 220);
+    --muted-foreground:      oklch(0.476 0.022 222);
+
+    /* Accent */
+    --accent:                oklch(0.942 0.018 186);
+    --accent-foreground:     oklch(0.190 0.025 222);
+
+    /* Destructive */
+    --destructive:           oklch(0.560 0.100 20);
+    --destructive-foreground: oklch(1 0 0);
+
+    /* Borders & inputs */
+    --border:                oklch(0.929 0.008 220);
+    --input:                 oklch(0.929 0.008 220);
+    --ring:                  oklch(0.517 0.090 186);
+
+    /* Semantic status tokens */
+    --success:               oklch(0.617 0.100 161);
+    --warning:               oklch(0.709 0.100 72);
+    --danger:                oklch(0.560 0.100 20);
+    --info:                  oklch(0.600 0.100 258);
+
+    /* Radius */
+    --radius:                0.625rem;
+  }
+
+/* ── Dark theme ──────────────────────────────────────────────────────────────── */
+  .dark {
+    --background:            oklch(0.139 0.018 222);
+    --foreground:            oklch(0.930 0.008 222);
+    --card:                  oklch(0.185 0.022 222);
+    --card-foreground:       oklch(0.930 0.008 222);
+    --popover:               oklch(0.185 0.022 222);
+    --popover-foreground:    oklch(0.930 0.008 222);
+
+    --primary:               oklch(0.660 0.100 186);
+    --primary-foreground:    oklch(0.139 0.018 222);
+    --primary-hover:         oklch(0.720 0.100 186);
+    --primary-soft:          oklch(0.250 0.040 186);
+
+    --secondary:             oklch(0.250 0.020 222);
+    --secondary-foreground:  oklch(0.930 0.008 222);
+    --muted:                 oklch(0.250 0.020 222);
+    --muted-foreground:      oklch(0.600 0.022 222);
+    --accent:                oklch(0.250 0.020 222);
+    --accent-foreground:     oklch(0.930 0.008 222);
+
+    --destructive:           oklch(0.560 0.100 20);
+    --destructive-foreground: oklch(1 0 0);
+
+    --border:                oklch(0.280 0.020 222);
+    --input:                 oklch(0.280 0.020 222);
+    --ring:                  oklch(0.660 0.100 186);
+
+    --success:               oklch(0.617 0.100 161);
+    --warning:               oklch(0.709 0.100 72);
+    --danger:                oklch(0.560 0.100 20);
+    --info:                  oklch(0.600 0.100 258);
+  }
+}
+
+/* ── Base styles ─────────────────────────────────────────────────────────────── */
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans;
+    line-height: 1.5;
+    font-size: 0.875rem;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-display font-semibold;
+  }
+
+  /* Tabular numbers for data */
+  .tabular-nums,
+  [data-tabular],
+  td,
+  time {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Code / IDs */
+  code, kbd, [data-mono] {
+    @apply font-mono;
+  }
+
+  /* Focus rings */
+  :focus-visible {
+    @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background;
+  }
+
+  /* Respect reduced motion */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}

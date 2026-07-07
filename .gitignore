@@ -1,0 +1,13 @@
+node_modules
+.env
+.env.local
+dist
+.next
+.turbo
+*.log
+coverage
+uploads
+test-results
+playwright-report
+blob-report
+playwright/.cache
