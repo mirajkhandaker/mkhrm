@@ -44,6 +44,8 @@ Both apps read their port from the env var at startup — no hard-coded ports in
 pnpm install
 ```
 
+`packages/config` is the shared-config source: `@hrm/config/tailwind/preset` (the §10 theme, consumed by `apps/web/tailwind.config.ts` via `presets`) and `@hrm/config/eslint/base` (plugin-free lint rules, consumed by the Next app in `apps/web/.eslintrc.js`; the API keeps its own `@typescript-eslint`-aware config).
+
 ### Run (dev)
 ```bash
 pnpm run dev:api    # NestJS API only — port from API_PORT

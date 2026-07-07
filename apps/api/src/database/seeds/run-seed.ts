@@ -278,10 +278,26 @@ async function runSeed() {
       roleId: string | undefined,
     ): Promise<string | null> {
       const existingEmp = await dataSource.query(
-        `SELECT id FROM employees WHERE employee_code = $1 LIMIT 1`,
+        `SELECT id, user_id FROM employees WHERE employee_code = $1 LIMIT 1`,
         [employeeCode],
       );
-      if (existingEmp.length > 0) return existingEmp[0].id;
+      if (existingEmp.length > 0) {
+        const empId = existingEmp[0].id;
+        // Self-heal on re-seed: this function is idempotent-by-code, but earlier it
+        // short-circuited without updating existing rows — so a DB seeded under an
+        // older manager-chain shape kept a stale line_manager_id, silently breaking
+        // manager-chain approval routing (the demo employee reported to the wrong
+        // person). Re-point the linkage and re-ensure the role on every run.
+        await dataSource.query(
+          `UPDATE employees SET line_manager_id = $1 WHERE id = $2`,
+          [lineManagerId, empId],
+        );
+        if (roleId && existingEmp[0].user_id) {
+          await dataSource.createQueryBuilder().insert().into('user_roles')
+            .values({ user_id: existingEmp[0].user_id, role_id: roleId }).orIgnore().execute();
+        }
+        return empId;
+      }
 
       let userId: string;
       const existingUser = await dataSource.query(`SELECT id FROM users WHERE email = $1 LIMIT 1`, [email]);

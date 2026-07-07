@@ -1,5 +1,18 @@
 {
   "name": "@hrm/config",
   "version": "0.0.1",
-  "private": true
+  "private": true,
+  "exports": {
+    "./tailwind/preset": "./tailwind/preset.ts",
+    "./eslint/base": "./eslint/base.js",
+    "./tsconfig/base.json": "./tsconfig/base.json"
+  },
+  "files": [
+    "tailwind",
+    "eslint",
+    "tsconfig"
+  ],
+  "devDependencies": {
+    "tailwindcss": "^3.4.12"
+  }
 }
